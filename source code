@@ -1,0 +1,217 @@
+#include <iostream>
+#include <GL/glut.h>
+#include <sstream>
+#include <cmath>
+
+using namespace std;
+
+int windowWidth = 800;
+int windowHeight = 600;
+int birdPositionY = 300;
+int birdVelocity = 0;
+int gravity = -1;
+bool isJumping = false;
+bool gameOver = false;
+int score = 0;
+
+float cloud1X = 200;
+float cloud2X = 500;
+float cloud3X = 800;
+float cloudSpeed = 1.0;
+
+void drawBird() {
+    glColor3f(1.0f, 1.0f, 0.0f);  // Yellow color
+    glBegin(GL_POLYGON);
+    glVertex2f(100, birdPositionY + 20);
+    glVertex2f(110, birdPositionY + 20);
+    glVertex2f(110, birdPositionY);
+    glVertex2f(100, birdPositionY);
+    glEnd();
+}
+
+void drawGround() {
+    glColor3f(0.0f, 1.0f, 0.0f);  // Green color
+    glBegin(GL_POLYGON);
+    glVertex2f(0, 100);
+    glVertex2f(windowWidth, 100);
+    glVertex2f(windowWidth, 0);
+    glVertex2f(0, 0);
+    glEnd();
+}
+
+void drawGameOver() {
+    glColor3f(1.0f, 0.0f, 0.0f);  // Red color for "Game Over" message
+
+    // Set the position for the "Game Over" message
+    int gameOverX = windowWidth / 2 - 50;
+    int gameOverY = windowHeight / 2;
+
+    // Display the "Game Over" message using GLUT bitmap fonts
+    glRasterPos2i(gameOverX, gameOverY);
+    string gameOverString = "Game Over!";
+    for (size_t i = 0; i < gameOverString.length(); ++i) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, gameOverString[i]);
+    }
+}
+
+
+void drawScore() {
+    glColor3f(1.0f, 1.0f, 1.0f);  // White color for the score
+
+    // Set the position for the score display
+    int scoreX = windowWidth - 80;
+    int scoreY = windowHeight - 20;
+
+    // Convert the score to a string using stringstream
+    stringstream scoreStream;
+    scoreStream << "Score: " << score;
+    string scoreString = scoreStream.str();
+
+    // Display the score using GLUT bitmap fonts
+    glRasterPos2i(scoreX, scoreY);
+    for (size_t i = 0; i < scoreString.length(); ++i) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_12, scoreString[i]);
+    }
+}
+void update(int value) {
+    const int maxVelocity = 10;  // Limit the maximum velocity to control the speed
+
+    if (!gameOver) {
+        // Update cloud positions for a moving background
+        cloud1X -= cloudSpeed;
+        cloud2X -= cloudSpeed;
+        cloud3X -= cloudSpeed;
+
+        if (cloud1X < -50) {
+            cloud1X = windowWidth + 50;
+        }
+
+        if (cloud2X < -50) {
+            cloud2X = windowWidth + 50;
+        }
+        if (cloud3X < -50) {
+            cloud3X = windowWidth + 50;
+        }
+
+        if (isJumping) {
+            birdVelocity = 10;  // Adjust the initial velocity when jumping
+            isJumping = false;
+        } else {
+            birdVelocity += gravity;
+
+            // Limit the maximum falling velocity
+            if (birdVelocity < -maxVelocity) {
+                birdVelocity = -maxVelocity;
+            }
+
+            birdPositionY -= birdVelocity;
+
+            // Check if the bird is below the screen or above the window
+            if (birdPositionY < 0 || birdPositionY > windowHeight) {
+                birdPositionY = max(0, min(birdPositionY, windowHeight));
+                gameOver = true;
+                glutPostRedisplay();  // Trigger redisplay to show the "Game Over" message
+                return;
+            }
+
+            score++;
+        }
+
+        glutPostRedisplay();
+        glutTimerFunc(16, update, 0);
+    }
+}
+
+// Function to draw a cloud at a specified position
+void drawCloud(int x, int y) {
+    glColor3f(1.0f, 1.0f, 1.0f);  // White color for the clouds
+
+    // Draw the first, larger circle
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 360; i += 10) {
+        float angle = i * 3.14159265 / 180.0;
+        float cloudRadius = 20.0;
+        glVertex2f(x + cloudRadius * cos(angle), y + cloudRadius * sin(angle));
+    }
+    glEnd();
+
+    // Draw two smaller circles to add irregularity to the cloud shape
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 360; i += 10) {
+        float angle = i * 3.14159265 / 180.0;
+        float cloudRadius = 15.0;
+        glVertex2f(x + cloudRadius * cos(angle) + 15, y + cloudRadius * sin(angle));
+    }
+    glEnd();
+
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < 360; i += 10) {
+        float angle = i * 3.14159265 / 180.0;
+        float cloudRadius = 15.0;
+        glVertex2f(x + cloudRadius * cos(angle) - 15, y + cloudRadius * sin(angle));
+    }
+    glEnd();
+}
+
+void handleKeypress(unsigned char key, int x, int y) {
+    if (key == 32) {  // Space key
+        isJumping = true;
+    }
+}
+
+void drawBackground() {
+    // Draw blue sky
+    glColor3f(0.5f, 0.7f, 1.0f);  // Light blue color
+    glBegin(GL_POLYGON);
+    glVertex2f(0, windowHeight);
+    glVertex2f(windowWidth, windowHeight);
+    glVertex2f(windowWidth, 100);
+    glVertex2f(0, 100);
+    glEnd();
+}
+
+void drawScene() {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Draw moving background
+    drawBackground();
+
+    // Draw clouds at updated positions
+    drawCloud(cloud1X, 500);
+    drawCloud(cloud2X, 450);
+    drawCloud(cloud3X, 400);
+
+    drawBird();
+    drawGround();
+
+    // Display the score
+    drawScore();
+
+    if (gameOver) {
+        // Display "Game Over" message
+        drawGameOver();
+    }
+
+    glutSwapBuffers();
+}
+
+void init() {
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);  // Black background
+    gluOrtho2D(0, windowWidth, 0, windowHeight);
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB);
+    glutInitWindowSize(windowWidth, windowHeight);
+    glutCreateWindow("Flappy Bird");
+
+    glutDisplayFunc(drawScene);
+    glutKeyboardFunc(handleKeypress);
+    glutTimerFunc(25, update, 0);
+
+    init();
+    glutMainLoop();
+
+    return 0;
+}
